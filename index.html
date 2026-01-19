@@ -277,48 +277,46 @@
                 font-size: 9pt !important;
             }
 
-            /* --- Logic for hiding lines when printing (Report Style) --- */
-            body.print-hide-lines .input-line:not(.excel-data), 
-            body.print-hide-lines .input-date:not(.excel-data),
-            body.print-hide-lines select:not(.excel-data) {
-                border-bottom: none !important;
-            }
-
             /* --- NEW: Data Only Print Mode (Overlay Style) --- */
-            /* ซ่อนทุกอย่างใน page-frame โดยใช้ visibility เพื่อคง Layout ไว้ */
+            /* 1. Hide EVERYTHING inside page-frame by default */
             body.print-data-only .page-frame * {
                 visibility: hidden;
             }
             
-            /* แสดงเฉพาะ Input และ Select */
-            body.print-data-only .page-frame input,
-            body.print-data-only .page-frame select,
-            body.print-data-only .page-frame textarea {
+            /* 2. Show ONLY specific Personal Info inputs */
+            body.print-data-only .sequence-number-input,      /* ลำดับที่ */
+            body.print-data-only .research-id-input,          /* รหัสวิจัย */
+            body.print-data-only input[data-field="fullname"], /* ชื่อจริง */
+            body.print-data-only input[data-field="nickname"], /* ชื่อเล่น */
+            body.print-data-only input[data-field="age"]       /* อายุ */
+            {
                 visibility: visible !important;
-                border: none !important; /* เอาเส้นบรรทัดออกด้วย เพราะบนฟอร์มจริงมีแล้ว */
+                border: none !important; 
                 background: transparent !important;
                 box-shadow: none !important;
             }
             
-            /* จัดการ Checkbox ให้แสดงเฉพาะเครื่องหมายถูก */
+            /* 3. Handle Gender Checkbox: Hide box, show tick ONLY */
             body.print-data-only .checkbox-box {
-                visibility: hidden !important; /* ซ่อนกรอบสี่เหลี่ยม */
+                visibility: hidden !important; /* ซ่อนกรอบ */
                 border: none !important;
             }
+            
+            /* แสดงเครื่องหมายถูก */
             body.print-data-only .checkbox-box.checked::after {
-                visibility: visible !important; /* แสดงเครื่องหมายถูก */
+                visibility: visible !important; 
+                content: '✓' !important;
                 color: #000 !important;
-                /* ต้องมั่นใจว่าเครื่องหมายถูกเป็นสีดำ */
+                font-size: 14px; /* Adjust size if needed */
             }
             
-            /* ซ่อนเส้นตารางอย่างสมบูรณ์ */
+            /* 4. Hide all table borders completely */
             body.print-data-only table, 
             body.print-data-only th, 
             body.print-data-only td,
             body.print-data-only .page-frame {
                 border: none !important;
             }
-
 
             /* Ensure checkboxes render normally in standard print */
             .checkbox-box {
@@ -496,17 +494,18 @@
         function updatePageNumbering() {
             const allPages = document.querySelectorAll('.a4-page');
             allPages.forEach((page, index) => {
+                // คำนวณเลขหน้า
                 const pageNumber = index + 1;
                 const formattedNumber = pageNumber.toString().padStart(3, '0');
 
-                // Update Sequence Number if empty (don't overwrite imported data)
+                // อัพเดทเลขลำดับที่ (Auto Sequence)
                 const sequenceInput = page.querySelector('.sequence-number-input');
                 if (sequenceInput && !sequenceInput.value) sequenceInput.value = formattedNumber;
 
-                // Update Research ID if empty (don't overwrite imported data)
-                const researchIdInput = page.querySelector('.research-id-input');
-                if (researchIdInput && !researchIdInput.value) researchIdInput.value = `ช${formattedNumber}`; 
-
+                // ไม่แตะต้องรหัสวิจัย (Research ID) ตามที่ขอ
+                // const researchIdInput = page.querySelector('.research-id-input');
+                // if (researchIdInput && !researchIdInput.value) researchIdInput.value = `ช${formattedNumber}`; 
+                
                 const genderRadios = page.querySelectorAll('input[name^="gender"]');
                 genderRadios.forEach(radio => { radio.name = `gender_${index}`; });
 
@@ -722,29 +721,10 @@
             showCustomAlert(`นำเข้าข้อมูลสำเร็จ ${data.length} รายการ`);
         }
 
-        function togglePrintLines(checkbox) {
-            // Uncheck other print option to avoid conflict
-            const otherCheckbox = document.getElementById('printDataOnlyCheckbox');
-            if(checkbox.checked && otherCheckbox) otherCheckbox.checked = false;
-            
-            // Toggle Classes
-            if (checkbox.checked) {
-                document.body.classList.add('print-hide-lines');
-                document.body.classList.remove('print-data-only');
-            } else {
-                document.body.classList.remove('print-hide-lines');
-            }
-        }
-
         function toggleDataOnlyMode(checkbox) {
-            // Uncheck other print option to avoid conflict
-            const otherCheckbox = document.getElementById('hideLinesCheckbox');
-            if(checkbox.checked && otherCheckbox) otherCheckbox.checked = false;
-
             // Toggle Classes
             if (checkbox.checked) {
                 document.body.classList.add('print-data-only');
-                document.body.classList.remove('print-hide-lines');
             } else {
                 document.body.classList.remove('print-data-only');
             }
@@ -792,10 +772,6 @@
         </div>
 
         <div class="bg-white p-2 rounded-lg shadow-xl border border-gray-300 flex flex-col gap-2">
-             <label class="flex items-center cursor-pointer">
-                <input type="checkbox" id="hideLinesCheckbox" class="w-4 h-4 mr-2" onchange="togglePrintLines(this)">
-                <span class="text-sm text-gray-700">ซ่อนเส้นบรรทัด (Excel Data)</span>
-            </label>
              <label class="flex items-center cursor-pointer">
                 <input type="checkbox" id="printDataOnlyCheckbox" class="w-4 h-4 mr-2" onchange="toggleDataOnlyMode(this)">
                 <span class="text-sm font-bold text-blue-800">พิมพ์ทับแบบฟอร์ม (เฉพาะข้อมูล)</span>
