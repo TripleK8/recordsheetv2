@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Individual Record Sheet</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load SheetJS library for Excel file reading -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Import Sarabun font (Google Fonts) -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles using Sarabun exclusively */
+        html, body {
+            height: 100%; 
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
+            -webkit-font-smoothing: antialiased;
+            color: #1f2937;
+            
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            margin: 0 auto; 
+            padding: 15mm; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.15);
+            position: relative;
+            box-sizing: border-box;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        /* Class สำหรับกรอบข้อมูล */
+        .page-frame {
+            border: 2px solid #000;
+            padding: 20px;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            position: relative;
+        }
+
+        /* Input field styling for the underscore effect */
+        .input-line {
+            border: none;
+            border-bottom: 1px solid #9ca3af;
+            width: 100%;
+            outline: none;
+            padding: 2px 0;
+            font-weight: 500;
+            color: #000;
+            background: transparent;
+            font-size: 14px;
+            text-align: center;
+            transition: border-bottom-color 0.2s;
+        }
+        .input-line:focus {
+            border-bottom: 2px solid #2563eb;
+        }
+
+        /* Styling for Date Input (to look like input-line) */
+        .input-date {
+            font-family: inherit;
+            border: none;
+            border-bottom: 1px solid #9ca3af;
+            outline: none;
+            padding: 2px 0;
+            padding-left: 5px;
+            font-weight: 500;
+            color: #000;
+            background: transparent;
+            font-size: 14px;
+            text-align: left;
+            appearance: none;
+        }
+        .input-date:focus {
+             border-bottom: 2px solid #2563eb;
+        }
+
+        /* --- UPDATED TABLE STYLING FOR ROUNDED CORNERS (Section 2, 3, 4) --- */
+        table {
+            width: 100%;
+            margin-bottom: 1.2rem;
+            table-layout: fixed;
+            border-collapse: separate; 
+            border-spacing: 0;
+            border: 1px solid #000;
+            border-radius: 12px;
+            overflow: hidden;
+            background-clip: padding-box;
+        }
+        
+        th, td {
+            padding: 6px 4px;
+            vertical-align: middle;
+            font-size: 13px;
+            border-right: 1px solid #000;
+            border-bottom: 1px solid #000;
+            border-left: none;
+            border-top: none;
+        }
+        
+        th:last-child, td:last-child {
+            border-right: none;
+        }
+        
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        td {
+            text-align: center;
+        }
+
+        .label-table td:first-child {
+            text-align: left !important;
+            padding-left: 12px;
+        }
+
+        th {
+            background-color: #e5e7eb;
+            font-weight: bold;
+            color: #000;
+            text-align: center !important;
+        }
+        
+        /* Custom Radio/Checkbox Styling */
+        .checkbox-group {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .checkbox-box {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #000;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 4px;
+            background-color: white;
+            position: relative;
+        }
+        .checkbox-box.checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            color: #000;
+        }
+
+        .keep-together {
+            white-space: nowrap;
+        }
+        
+        .a4-page .delete-page-btn {
+            position: absolute;
+            top: 5mm; 
+            left: 5mm; 
+            z-index: 20;
+            padding: 6px 10px;
+            opacity: 1;
+            cursor: pointer;
+        }
+        .a4-page .delete-page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* --- Print Media Query (Fitted to 1 page) --- */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0; 
+            }
+            body {
+                background: white;
+                margin: 0;
+                font-size: 13px !important;
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+                display: block;
+                padding: 0 !important;
+            }
+            .a4-page {
+                box-shadow: none;
+                margin: 0;
+                page-break-after: always;
+                width: 210mm !important; 
+                height: 297mm !important; 
+                min-height: 297mm !important;
+                overflow: hidden !important; 
+                padding: 5mm 8mm !important; /* Reduced padding for more space */
+                border-radius: 0;
+                box-sizing: border-box;
+            }
+
+            .page-frame {
+                border: none !important; /* NO BORDER ON PRINT */
+                padding: 10px !important;   /* Reduced internal padding */
+                height: 100% !important;
+                flex: 1;
+                box-sizing: border-box;
+            }
+
+            table {
+                border-collapse: collapse !important;
+                border-radius: 0 !important;
+                border: 1px solid #000 !important;
+                border-spacing: 0 !important;
+                margin-bottom: 0.5rem !important;
+            }
+            
+            th, td {
+                border: 1px solid #000 !important; 
+                padding: 2px 4px !important; /* Tighter cells */
+            }
+            
+            th:last-child, td:last-child {
+                border-right: 1px solid #000 !important;
+            }
+            tbody tr:last-child td {
+                border-bottom: 1px solid #000 !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+            .delete-page-btn, #custom-modal-overlay {
+                display: none !important;
+            }
+            
+            /* Tighten up margins */
+            .mb-8 { margin-bottom: 0.5rem !important; }
+            .mb-6 { margin-bottom: 0.5rem !important; }
+            .mb-4 { margin-bottom: 0.25rem !important; }
+            .mt-4 { margin-top: 0.25rem !important; }
+            .p-5 { padding: 8px !important; }
+
+            .text-2xl { font-size: 16pt !important; margin-bottom: 0 !important; }
+            .text-lg { font-size: 10pt !important; }
+            .text-base { font-size: 9pt !important; }
+            .text-sm { font-size: 8pt !important; }
+
+            input, select {
+                box-shadow: none !important;
+                appearance: none !important;
+                pointer-events: none !important; 
+                color: #000 !important;
+            }
+            
+            .input-line, .input-date, select {
+                border-bottom: 1px solid #000 !important; 
+                background-color: transparent !important;
+                font-size: 9pt !important;
+            }
+
+            /* --- NEW: Logic for hiding lines when printing --- */
+            /* ซ่อนเส้น input ทั้งหมด ยกเว้นที่มี class .excel-data */
+            body.print-hide-lines .input-line:not(.excel-data), 
+            body.print-hide-lines .input-date:not(.excel-data),
+            body.print-hide-lines select:not(.excel-data) {
+                border-bottom: none !important;
+            }
+
+            /* Ensure checkboxes render */
+            .checkbox-box {
+                border: 1px solid #000 !important;
+                print-color-adjust: exact;
+            }
+        }
+
+        /* Mobile Optimization */
+        @media (max-width: 768px) {
+            body { display: block; padding: 10px; }
+            .a4-page { width: 95%; padding: 15px; }
+            .fixed.top-4.right-4 { position: static; margin-bottom: 20px; display: flex; flex-direction: column; width: 100%; }
+        }
+    </style>
+    <script>
+        const THAI_MONTHS_SHORT = [
+            "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", 
+            "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+        ];
+
+        function formatDateToThai(isoDateString) {
+            if (!isoDateString) return '';
+            try {
+                const date = new Date(isoDateString);
+                if (isNaN(date.getTime())) return 'Invalid Date'; 
+                const day = date.getDate();
+                const monthThai = THAI_MONTHS_SHORT[date.getMonth()];
+                const yearThai = date.getFullYear() + 543; 
+                return `${day} ${monthThai} ${yearThai}`;
+            } catch (e) {
+                return '';
+            }
+        }
+
+        let customModalResolve = null;
+
+        function showCustomAlert(message) {
+            const modal = document.getElementById('custom-modal');
+            const messageEl = document.getElementById('modal-message');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            const overlay = document.getElementById('custom-modal-overlay');
+
+            messageEl.innerHTML = message.replace(/\n/g, '<br>');
+            confirmBtn.textContent = 'ตกลง';
+            cancelBtn.classList.add('hidden');
+
+            return new Promise(resolve => {
+                customModalResolve = resolve;
+                confirmBtn.onclick = () => {
+                    hideCustomModal();
+                    resolve(true);
+                };
+                modal.classList.remove('hidden');
+                overlay.classList.remove('hidden');
+            });
+        }
+
+        function showCustomConfirm(message, callback) {
+            const modal = document.getElementById('custom-modal');
+            const messageEl = document.getElementById('modal-message');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            const overlay = document.getElementById('custom-modal-overlay');
+
+            messageEl.innerHTML = message.replace(/\n/g, '<br>');
+            confirmBtn.textContent = 'ยืนยัน';
+            cancelBtn.classList.remove('hidden');
+            cancelBtn.textContent = 'ยกเลิก';
+
+            confirmBtn.onclick = () => {
+                hideCustomModal();
+                callback(true);
+            };
+            cancelBtn.onclick = () => {
+                hideCustomModal();
+                callback(false);
+            };
+
+            modal.classList.remove('hidden');
+            overlay.classList.remove('hidden');
+        }
+
+        function hideCustomModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+            document.getElementById('custom-modal-overlay').classList.add('hidden');
+        }
+
+        function syncDateCheckboxes(sourceCheckbox) {
+            const isChecked = sourceCheckbox.checked;
+            const allSyncCheckboxes = document.querySelectorAll('.sync-date-checkbox');
+            
+            allSyncCheckboxes.forEach(cb => {
+                cb.checked = isChecked;
+            });
+
+            if (isChecked) {
+                const sourcePage = sourceCheckbox.closest('.a4-page');
+                const sourceDateInput = sourcePage.querySelector('.testDateHidden');
+                const dateValue = sourceDateInput.value;
+                
+                if (dateValue) {
+                    const allHiddenInputs = document.querySelectorAll('.testDateHidden');
+                    allHiddenInputs.forEach(input => {
+                        input.value = dateValue;
+                        const container = input.closest('.date-control');
+                        const display = container.querySelector('.testDateDisplay');
+                        if (display) display.value = formatDateToThai(dateValue);
+                    });
+                }
+            }
+        }
+
+        function handleDateChange(hiddenInput) {
+            const isoDateString = hiddenInput.value;
+            const dateContainer = hiddenInput.closest('.date-control');
+            const displayInput = dateContainer.querySelector('.testDateDisplay');
+            
+            if (displayInput) {
+                displayInput.value = formatDateToThai(isoDateString);
+            }
+
+            const page = hiddenInput.closest('.a4-page');
+            if (!page) return;
+            const syncCheckbox = page.querySelector('.sync-date-checkbox');
+            
+            if (syncCheckbox && syncCheckbox.checked) {
+                const allHiddenInputs = document.querySelectorAll('.testDateHidden');
+                allHiddenInputs.forEach(input => {
+                    input.value = isoDateString;
+                    const container = input.closest('.date-control');
+                    const display = container.querySelector('.testDateDisplay');
+                    if (display) display.value = formatDateToThai(isoDateString);
+                });
+            }
+        }
+
+        function initializeDateControl(controlElement) {
+            const today = new Date().toISOString().split('T')[0];
+            const hiddenInput = controlElement.querySelector('.testDateHidden');
+            if (hiddenInput) {
+                hiddenInput.value = today;
+                handleDateChange(hiddenInput);
+            }
+        }
+        
+        function clearPageInputs(pageElement) {
+            pageElement.querySelectorAll('input[type="text"], input[type="number"], select').forEach(input => {
+                 if (!input.classList.contains('trainingCenterSelect') && !input.classList.contains('sequence-number-input') && !input.classList.contains('research-id-input')) {
+                     input.value = '';
+                 }
+            });
+
+            pageElement.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(box => {
+                if (!box.classList.contains('sync-date-checkbox')) {
+                    box.checked = false;
+                    const customBox = box.closest('.checkbox-option')?.querySelector('.checkbox-box');
+                    if(customBox) customBox.classList.remove('checked'); 
+                }
+            });
+        }
+        
+        function syncCenterSelection(selectedValue) {
+            const allSelects = document.querySelectorAll('.trainingCenterSelect');
+            if (selectedValue === undefined) {
+                const firstSelect = allSelects[0];
+                selectedValue = firstSelect ? firstSelect.value : '';
+            }
+            allSelects.forEach(select => {
+                select.value = selectedValue;
+            });
+        }
+
+        function updatePageNumbering() {
+            const allPages = document.querySelectorAll('.a4-page');
+            allPages.forEach((page, index) => {
+                const pageNumber = index + 1;
+                const formattedNumber = pageNumber.toString().padStart(3, '0');
+
+                // Update Sequence Number if empty (don't overwrite imported data)
+                const sequenceInput = page.querySelector('.sequence-number-input');
+                if (sequenceInput && !sequenceInput.value) sequenceInput.value = formattedNumber;
+
+                // Update Research ID if empty (don't overwrite imported data)
+                const researchIdInput = page.querySelector('.research-id-input');
+                if (researchIdInput && !researchIdInput.value) researchIdInput.value = `ช${formattedNumber}`; 
+
+                const genderRadios = page.querySelectorAll('input[name^="gender"]');
+                genderRadios.forEach(radio => { radio.name = `gender_${index}`; });
+
+                const handRadios = page.querySelectorAll('input[name^="dominantHand"]');
+                handRadios.forEach(radio => { radio.name = `dominantHand_${index}`; });
+            });
+        }
+
+        function updateDeleteButtons() {
+            const allPages = document.querySelectorAll('.a4-page');
+            const deleteButtons = document.querySelectorAll('.delete-page-btn');
+            const isSinglePage = allPages.length === 1;
+
+            deleteButtons.forEach(btn => {
+                btn.disabled = isSinglePage;
+            });
+
+            const pageCountInput = document.getElementById('pageCountInput');
+            if(pageCountInput) pageCountInput.value = allPages.length;
+        }
+
+        function setTotalPages(targetCount) {
+            let existingPages = document.querySelectorAll('.a4-page');
+            const currentCount = existingPages.length;
+
+            if (targetCount === currentCount) return;
+            if (targetCount < 1) targetCount = 1;
+
+            const firstPage = existingPages[0];
+            const isSyncDate = firstPage ? firstPage.querySelector('.sync-date-checkbox').checked : false;
+            const firstPageDateValue = firstPage ? firstPage.querySelector('.testDateHidden').value : '';
+
+            if (targetCount < currentCount) {
+                for (let i = currentCount; i > targetCount; i--) {
+                    existingPages[i - 1].remove();
+                }
+            } else {
+                existingPages = document.querySelectorAll('.a4-page');
+                const pageTemplate = existingPages[0]; 
+                for (let i = currentCount; i < targetCount; i++) {
+                    const newPage = pageTemplate.cloneNode(true);
+                    clearPageInputs(newPage);
+                    const newDateControl = newPage.querySelector('.date-control');
+                    if (newDateControl) initializeDateControl(newDateControl);
+
+                    const newSyncCheckbox = newPage.querySelector('.sync-date-checkbox');
+                    if (newSyncCheckbox) newSyncCheckbox.checked = isSyncDate;
+                    
+                    if (isSyncDate && firstPageDateValue) {
+                        const newDateInput = newPage.querySelector('.testDateHidden');
+                        const newDateDisplay = newPage.querySelector('.testDateDisplay');
+                        if(newDateInput) newDateInput.value = firstPageDateValue;
+                        if(newDateDisplay) newDateDisplay.value = formatDateToThai(firstPageDateValue);
+                    }
+
+                    let lastPages = document.querySelectorAll('.a4-page');
+                    lastPages[lastPages.length - 1].after(newPage);
+                }
+            }
+            updatePageNumbering(); updateDeleteButtons(); syncCenterSelection();
+        }
+
+        function applyPageCount() {
+            const input = document.getElementById('pageCountInput');
+            let count = parseInt(input.value);
+            if (isNaN(count) || count < 1) count = 1;
+            setTotalPages(count);
+        }
+
+        function deletePage(buttonElement) {
+            const allPages = document.querySelectorAll('.a4-page');
+            if (allPages.length > 1) {
+                const pageNum = Array.from(allPages).indexOf(buttonElement.closest('.a4-page')) + 1;
+                showCustomConfirm(`ยืนยันการลบหน้า ${pageNum} หรือไม่?`, (confirmed) => {
+                    if (confirmed) {
+                        buttonElement.closest('.a4-page').remove();
+                        updatePageNumbering(); updateDeleteButtons(); syncCenterSelection();
+                    }
+                });
+            } else {
+                showCustomAlert('ไม่สามารถลบหน้าสุดท้ายได้');
+            }
+        }
+        
+        function toggleRadio(labelElement, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            const inputRadio = labelElement.querySelector('input[type="radio"]');
+            const parentControl = labelElement.closest('.checkbox-control');
+            const currentBox = labelElement.querySelector('.checkbox-box');
+
+            if (!inputRadio) return;
+
+            const isChecked = currentBox.classList.contains('checked');
+
+            parentControl.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.checked = false;
+                const box = radio.closest('.checkbox-option').querySelector('.checkbox-box');
+                if (box) box.classList.remove('checked');
+            });
+
+            if (!isChecked) {
+                inputRadio.checked = true;
+                currentBox.classList.add('checked');
+            }
+        }
+
+        function setAllGender(genderValue) {
+            const allPages = document.querySelectorAll('.a4-page');
+            allPages.forEach(page => {
+                const targetRadio = page.querySelector(`input[value="${genderValue}"][name^="gender"]`);
+                if (targetRadio) {
+                    targetRadio.checked = true;
+                    const parentControl = targetRadio.closest('.checkbox-control');
+                    if (parentControl) {
+                        parentControl.querySelectorAll('input[type="radio"]').forEach(radio => {
+                            const box = radio.closest('.checkbox-option').querySelector('.checkbox-box');
+                            if (radio.checked) box.classList.add('checked');
+                            else box.classList.remove('checked');
+                        });
+                    }
+                }
+            });
+        }
+
+        function clearImportedData() {
+            showCustomConfirm('ยืนยันการล้างข้อมูลที่นำเข้าจากทุกหน้าหรือไม่?', (confirmed) => {
+                if (confirmed) {
+                    document.querySelectorAll('.a4-page').forEach(page => {
+                        page.querySelectorAll('[data-field]').forEach(input => { input.value = ''; });
+                        // Clear sequence and research ID too
+                        page.querySelector('.sequence-number-input').value = '';
+                        page.querySelector('.research-id-input').value = '';
+                    });
+                    updatePageNumbering();
+                    showCustomAlert('ล้างข้อมูลเรียบร้อยแล้ว');
+                }
+            });
+        }
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 }); 
+                    processExcelData(json.slice(1));
+                } catch (error) {
+                    showCustomAlert(`Error: ${error.message}`);
+                }
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelData(data) {
+            if (data.length === 0) return;
+            setTotalPages(data.length);
+            const allPages = document.querySelectorAll('.a4-page');
+            
+            data.forEach((row, index) => {
+                const page = allPages[index];
+                if (!page) return;
+                
+                const getValue = (col) => (row[col] !== undefined && row[col] !== null) ? String(row[col]).trim() : '';
+                const getInput = (field) => page.querySelector(`[data-field="${field}"]`);
+
+                // 1. ลำดับที่ (A: Index 0)
+                const sequenceInput = page.querySelector('.sequence-number-input');
+                if (sequenceInput) sequenceInput.value = getValue(0);
+
+                // 2. ชื่อจริง (B: Index 1)
+                if (getInput('fullname')) getInput('fullname').value = getValue(1);
+
+                // 3. ชื่อเล่น (C: Index 2)
+                if (getInput('nickname')) getInput('nickname').value = getValue(2);
+
+                // 4. อายุ (D: Index 3)
+                if (getInput('age')) getInput('age').value = getValue(3).replace(/[^0-9.]/g, '');
+                
+                // 5. รหัสวิจัย (E: Index 4)
+                const researchIdInput = page.querySelector('.research-id-input');
+                if (researchIdInput) researchIdInput.value = getValue(4);
+
+                // 6. เพศ (F: Index 5) - ชาย=0, หญิง=1
+                const genderVal = getValue(5);
+                let genderTarget = '';
+                if (genderVal === '0') genderTarget = 'male';
+                else if (genderVal === '1') genderTarget = 'female';
+
+                if (genderTarget) {
+                    const targetRadio = page.querySelector(`input[value="${genderTarget}"][name^="gender"]`);
+                    if (targetRadio) {
+                        targetRadio.checked = true;
+                        const parentControl = targetRadio.closest('.checkbox-control');
+                        if (parentControl) {
+                            parentControl.querySelectorAll('input[type="radio"]').forEach(radio => {
+                                const box = radio.closest('.checkbox-option').querySelector('.checkbox-box');
+                                if (radio.checked) box.classList.add('checked');
+                                else box.classList.remove('checked');
+                            });
+                        }
+                    }
+                }
+            });
+            showCustomAlert(`นำเข้าข้อมูลสำเร็จ ${data.length} รายการ`);
+        }
+
+        function togglePrintLines(checkbox) {
+            if (checkbox.checked) {
+                document.body.classList.add('print-hide-lines');
+            } else {
+                document.body.classList.remove('print-hide-lines');
+            }
+        }
+
+        window.onload = () => { initializeDateControl(document.querySelector('.date-control')); };
+    </script>
+</head>
+<body>
+
+    <div id="custom-modal-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-[100] hidden"></div>
+    <div id="custom-modal" class="fixed inset-0 flex items-center justify-center z-[101] hidden">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4">
+            <div class="text-lg font-semibold mb-4 text-gray-900">การแจ้งเตือน</div>
+            <p id="modal-message" class="text-gray-700 mb-6"></p>
+            <div class="flex justify-end gap-3">
+                <button id="modal-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md hidden">ยกเลิก</button>
+                <button id="modal-confirm-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed top-4 right-4 no-print z-50 flex flex-col items-end gap-3">
+        <div class="bg-white p-2 rounded-lg shadow-xl border border-gray-300 flex flex-col gap-2">
+            <h4 class="text-xs font-bold text-gray-500 text-center uppercase">ควบคุมข้อมูล</h4>
+            <div class="flex gap-2">
+                <input type="file" id="excelFileInput" accept=".xlsx,.xls" class="hidden" onchange="handleFile(event)">
+                <button onclick="document.getElementById('excelFileInput').click()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded-md text-sm">นำเข้า (Excel)</button>
+                <button onclick="clearImportedData()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-md text-sm">ล้างข้อมูล</button>
+            </div>
+        </div>
+        
+        <div class="bg-white p-2 rounded-lg shadow-xl border border-gray-300 flex flex-col gap-2 w-full">
+            <h4 class="text-xs font-bold text-gray-500 text-center uppercase">เพศ (ทั้งหมด)</h4>
+            <div class="flex gap-2">
+                 <button onclick="setAllGender('male')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded-md text-sm flex-1">ชาย</button>
+                 <button onclick="setAllGender('female')" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-1 px-3 rounded-md text-sm flex-1">หญิง</button>
+            </div>
+        </div>
+        
+        <div class="bg-white p-2 rounded-lg shadow-xl border border-gray-300 flex items-center gap-2">
+            <label class="text-sm font-semibold">จำนวนหน้า:</label>
+            <input type="number" id="pageCountInput" value="1" min="1" class="w-12 text-center border rounded-md">
+            <button onclick="applyPageCount()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">ปรับใช้</button>
+        </div>
+
+        <div class="bg-white p-2 rounded-lg shadow-xl border border-gray-300 flex items-center gap-2">
+             <label class="flex items-center cursor-pointer">
+                <input type="checkbox" class="w-4 h-4 mr-2" onchange="togglePrintLines(this)">
+                <span class="text-sm font-semibold text-gray-700">ซ่อนเส้นบรรทัดตอนพิมพ์</span>
+            </label>
+        </div>
+
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-xl flex items-center gap-2">พิมพ์เอกสาร</button>
+    </div>
+
+    <div class="page-container">
+        <div class="a4-page">
+            <button onclick="deletePage(this)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-md shadow-lg delete-page-btn no-print">ลบหน้า</button>
+
+            <div class="page-frame">
+                <div>
+                    <div class="text-center mb-6">
+                        <h1 class="text-2xl font-bold uppercase tracking-wider mb-1">แบบบันทึกข้อมูลการทดสอบสมรรถภาพ</h1>
+                        <h2 class="text-lg text-gray-600 font-light">(Data Collection Record Sheet)</h2>
+                    </div>
+
+                    <div class="mb-4 flex items-end justify-center px-4">
+                        <span class="font-bold mr-2 whitespace-nowrap">ศูนย์ฝึกและอบรมเด็กและเยาวชน:</span>
+                        <select class="input-line flex-1 text-center font-bold trainingCenterSelect" onchange="syncCenterSelection(this.value)">
+                            <option value="" disabled selected>--- เลือกศูนย์ฯ ---</option>
+                            <option value="ระยอง">ระยอง</option>
+                            <option value="ราชบุรี">ราชบุรี</option>
+                            <option value="บ้านชายกรุณา">ชายบ้านกรุณา</option>
+                            <option value="เชียงใหม่">เชียงใหม่</option>
+                            <option value="สุราษฎร์ธานี">สุราษฎร์ธานี</option>
+                            <option value="อุบลราชธานี">อุบลราชธานี</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-8 flex items-end justify-end px-4 date-control">
+                        <label class="flex items-center mr-4 cursor-pointer no-print">
+                            <input type="checkbox" class="w-4 h-4 mr-2 sync-date-checkbox" onchange="syncDateCheckboxes(this)">
+                            <span class="text-xs font-semibold">ใช้วันที่เดียวกันทุกหน้า</span>
+                        </label>
+                        <span class="font-bold mr-4 whitespace-nowrap">วันที่ทดสอบ:</span>
+                        <div class="relative w-40 flex items-center">
+                            <input type="text" class="input-date w-full pr-8 testDateDisplay" placeholder="วัน/เดือน/ปี" readonly>
+                            <input type="date" class="absolute inset-0 w-full opacity-0 cursor-pointer testDateHidden" onchange="handleDateChange(this)">
+                        </div>
+                    </div>
+
+                    <div class="mb-8 border border-black p-5 rounded-md">
+                        <h3 class="font-bold text-lg mb-4">1. ข้อมูลทั่วไป (General Information)</h3>
+                        <div class="grid grid-cols-2 gap-x-10 gap-y-5 mb-3">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap font-semibold w-24">ลำดับที่:</span>
+                                <!-- Added class excel-data -->
+                                <input type="text" class="input-line sequence-number-input excel-data" readonly>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap font-semibold w-24">รหัสวิจัย:</span>
+                                <!-- Added class excel-data -->
+                                <input type="text" class="input-line research-id-input excel-data" readonly>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-x-10 gap-y-5 mb-3">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap font-semibold w-24">ชื่อจริง:</span>
+                                <!-- Added class excel-data -->
+                                <input type="text" class="input-line excel-data" data-field="fullname">
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap font-semibold w-24">ชื่อเล่น:</span>
+                                <!-- Added class excel-data -->
+                                <input type="text" class="input-line excel-data" data-field="nickname">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-x-10 gap-y-5 mb-3">
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap font-semibold w-24">อายุ:</span>
+                                <div class="flex w-full items-end">
+                                    <!-- Added class excel-data -->
+                                    <input type="number" class="input-line excel-data" data-field="age">
+                                    <span class="ml-2">ปี</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-x-6 gap-y-5 mt-4">
+                            <div class="flex items-center checkbox-control">
+                                <span class="font-semibold mr-4 w-16">เพศ:</span>
+                                <label class="checkbox-group mr-4 checkbox-option" onclick="toggleRadio(this, event)">
+                                    <input type="radio" name="gender" value="male" class="hidden">
+                                    <span class="checkbox-box"></span> ชาย
+                                </label>
+                                <label class="checkbox-group checkbox-option" onclick="toggleRadio(this, event)">
+                                    <input type="radio" name="gender" value="female" class="hidden">
+                                    <span class="checkbox-box"></span> หญิง
+                                </label>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap font-semibold mr-2">ส่วนสูง:</span>
+                                <input type="number" class="input-line" data-field="height">
+                                <span class="ml-2">ซม.</span>
+                            </div>
+                            <div class="flex items-end">
+                                <span class="whitespace-nowrap font-semibold mr-2">น้ำหนัก:</span>
+                                <input type="number" class="input-line">
+                                <span class="ml-2">กก.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-8">
+                        <h3 class="font-bold text-lg mb-2">2. สัดส่วนร่างกาย (Body Composition)</h3>
+                        <table class="label-table">
+                            <thead>
+                                <tr>
+                                    <th>รายการ</th>
+                                    <th>Trial 1 (cm)</th>
+                                    <th>Trial 2 (cm)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="font-semibold py-3">เส้นรอบเอว (Waist)</td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent" data-field="waist1"></td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent" data-field="waist2"></td>
+                                </tr>
+                                <tr>
+                                    <td class="font-semibold py-3">เส้นรอบสะโพก (Hip)</td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent" data-field="hip1"></td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent" data-field="hip2"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-bold text-lg">3. Handgrip Strength Test</h3>
+                            <div class="flex items-center checkbox-control">
+                                <span class="font-semibold mr-3">ข้างที่ถนัด:</span>
+                                <label class="checkbox-group mr-4 checkbox-option" onclick="toggleRadio(this, event)">
+                                    <input type="radio" name="dominantHand" value="right" class="hidden">
+                                    <span class="checkbox-box"></span> ขวา
+                                </label>
+                                <label class="checkbox-group checkbox-option" onclick="toggleRadio(this, event)">
+                                    <input type="radio" name="dominantHand" value="left" class="hidden">
+                                    <span class="checkbox-box"></span> ซ้าย
+                                </label>
+                            </div>
+                        </div>
+                        <table class="label-table">
+                            <thead>
+                                <tr>
+                                    <th>ข้าง</th>
+                                    <th>Trial 1 (kg)</th>
+                                    <th>Trial 2 (kg)</th>
+                                    <th>Trial 3 (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="font-semibold py-3">Dominant (ข้างถนัด)</td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent"></td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent"></td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent"></td>
+                                </tr>
+                                <tr>
+                                    <td class="font-semibold py-3">Non-Dominant (ไม่ถนัด)</td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent"></td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent"></td>
+                                    <td><input type="text" class="w-full text-center outline-none bg-transparent"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mb-8">
+                        <h3 class="font-bold text-lg mb-2">4. Back-Leg Dynamometer Test</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Trial 1 (kg)</th>
+                                    <th>Trial 2 (kg)</th>
+                                    <th>Trial 3 (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="h-14">
+                                    <td><input type="text" class="w-full h-full text-center outline-none bg-transparent font-bold"></td>
+                                    <td><input type="text" class="w-full h-full text-center outline-none bg-transparent font-bold"></td>
+                                    <td><input type="text" class="w-full h-full text-center outline-none bg-transparent font-bold"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mb-6">
+                        <h3 class="font-bold text-lg mb-3">5. ความทนทานหัวใจและระดับความเหนื่อย</h3>
+                        <div class="grid grid-cols-2 gap-8">
+                            <div class="border border-black rounded-md overflow-hidden">
+                                <div class="bg-gray-200 p-2 text-center font-bold border-b border-black">20M-SRT Test</div>
+                                <div class="p-6 text-center">
+                                    <label class="block text-sm font-semibold mb-3">จำนวนรอบสะสม</label>
+                                    <input type="number" class="border border-gray-400 w-24 h-12 text-center rounded-lg text-lg font-bold" data-field="20m-laps">
+                                    <span class="ml-2">รอบ</span>
+                                </div>
+                            </div>
+                            <div class="border border-black rounded-md overflow-hidden">
+                                <div class="bg-gray-200 p-2 text-center font-bold border-b border-black">CR10 Scale (ระดับความเหนื่อย)</div>
+                                <div class="p-4 grid grid-cols-2 gap-4">
+                                    <div class="text-center">
+                                        <label class="block text-xs font-semibold mb-2">Cardio (เหนื่อย)</label>
+                                        <input type="number" class="border border-gray-400 w-16 h-10 text-center rounded-lg font-bold" data-field="cr10-cardio">
+                                        <span>/10</span>
+                                    </div>
+                                    <div class="text-center">
+                                        <label class="block text-xs font-semibold mb-2">Muscle (ล้า)</label>
+                                        <input type="number" class="border border-gray-400 w-16 h-10 text-center rounded-lg font-bold" data-field="cr10-muscle">
+                                        <span>/10</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
