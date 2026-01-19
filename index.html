@@ -277,15 +277,50 @@
                 font-size: 9pt !important;
             }
 
-            /* --- NEW: Logic for hiding lines when printing --- */
-            /* ซ่อนเส้น input ทั้งหมด ยกเว้นที่มี class .excel-data */
+            /* --- Logic for hiding lines when printing (Report Style) --- */
             body.print-hide-lines .input-line:not(.excel-data), 
             body.print-hide-lines .input-date:not(.excel-data),
             body.print-hide-lines select:not(.excel-data) {
                 border-bottom: none !important;
             }
 
-            /* Ensure checkboxes render */
+            /* --- NEW: Data Only Print Mode (Overlay Style) --- */
+            /* ซ่อนทุกอย่างใน page-frame โดยใช้ visibility เพื่อคง Layout ไว้ */
+            body.print-data-only .page-frame * {
+                visibility: hidden;
+            }
+            
+            /* แสดงเฉพาะ Input และ Select */
+            body.print-data-only .page-frame input,
+            body.print-data-only .page-frame select,
+            body.print-data-only .page-frame textarea {
+                visibility: visible !important;
+                border: none !important; /* เอาเส้นบรรทัดออกด้วย เพราะบนฟอร์มจริงมีแล้ว */
+                background: transparent !important;
+                box-shadow: none !important;
+            }
+            
+            /* จัดการ Checkbox ให้แสดงเฉพาะเครื่องหมายถูก */
+            body.print-data-only .checkbox-box {
+                visibility: hidden !important; /* ซ่อนกรอบสี่เหลี่ยม */
+                border: none !important;
+            }
+            body.print-data-only .checkbox-box.checked::after {
+                visibility: visible !important; /* แสดงเครื่องหมายถูก */
+                color: #000 !important;
+                /* ต้องมั่นใจว่าเครื่องหมายถูกเป็นสีดำ */
+            }
+            
+            /* ซ่อนเส้นตารางอย่างสมบูรณ์ */
+            body.print-data-only table, 
+            body.print-data-only th, 
+            body.print-data-only td,
+            body.print-data-only .page-frame {
+                border: none !important;
+            }
+
+
+            /* Ensure checkboxes render normally in standard print */
             .checkbox-box {
                 border: 1px solid #000 !important;
                 print-color-adjust: exact;
@@ -688,10 +723,30 @@
         }
 
         function togglePrintLines(checkbox) {
+            // Uncheck other print option to avoid conflict
+            const otherCheckbox = document.getElementById('printDataOnlyCheckbox');
+            if(checkbox.checked && otherCheckbox) otherCheckbox.checked = false;
+            
+            // Toggle Classes
             if (checkbox.checked) {
                 document.body.classList.add('print-hide-lines');
+                document.body.classList.remove('print-data-only');
             } else {
                 document.body.classList.remove('print-hide-lines');
+            }
+        }
+
+        function toggleDataOnlyMode(checkbox) {
+            // Uncheck other print option to avoid conflict
+            const otherCheckbox = document.getElementById('hideLinesCheckbox');
+            if(checkbox.checked && otherCheckbox) otherCheckbox.checked = false;
+
+            // Toggle Classes
+            if (checkbox.checked) {
+                document.body.classList.add('print-data-only');
+                document.body.classList.remove('print-hide-lines');
+            } else {
+                document.body.classList.remove('print-data-only');
             }
         }
 
@@ -736,10 +791,14 @@
             <button onclick="applyPageCount()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-md text-sm">ปรับใช้</button>
         </div>
 
-        <div class="bg-white p-2 rounded-lg shadow-xl border border-gray-300 flex items-center gap-2">
+        <div class="bg-white p-2 rounded-lg shadow-xl border border-gray-300 flex flex-col gap-2">
              <label class="flex items-center cursor-pointer">
-                <input type="checkbox" class="w-4 h-4 mr-2" onchange="togglePrintLines(this)">
-                <span class="text-sm font-semibold text-gray-700">ซ่อนเส้นบรรทัดตอนพิมพ์</span>
+                <input type="checkbox" id="hideLinesCheckbox" class="w-4 h-4 mr-2" onchange="togglePrintLines(this)">
+                <span class="text-sm text-gray-700">ซ่อนเส้นบรรทัด (Excel Data)</span>
+            </label>
+             <label class="flex items-center cursor-pointer">
+                <input type="checkbox" id="printDataOnlyCheckbox" class="w-4 h-4 mr-2" onchange="toggleDataOnlyMode(this)">
+                <span class="text-sm font-bold text-blue-800">พิมพ์ทับแบบฟอร์ม (เฉพาะข้อมูล)</span>
             </label>
         </div>
 
